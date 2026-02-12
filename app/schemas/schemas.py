@@ -23,3 +23,4 @@ class Document(BaseModel):
     text: str
     chunks: List[Chunk]
     metadata: dict[str, Any]
+

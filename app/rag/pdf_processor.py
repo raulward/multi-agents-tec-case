@@ -10,14 +10,17 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from langchain_docling.loader import DoclingLoader, ExportType
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 
+from app.rag.metadata_enricher import MetadataEnricher
 
-from app.utils.heuristic_extractor import extract_company_from_markdown
+from app.ai.structured_output import DocMetadata
+
+
 
 import uuid
 
 class PDFProcessor:
 
-    def __init__(self, chunk_size: int = 1200, chunk_overlap: int = 150):
+    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.header_levels =  [("#", "h1"), ("##", "h2"), ("###", "h3"), ("####", "h4")]
@@ -30,23 +33,44 @@ class PDFProcessor:
 
     def parse_folder(self, folder: Path | str) -> List[Document]:
         parserd_docs = []
-        for file in folder.glob("*.pdf"):
+        for file in Path(folder).glob("*.pdf"):
             doc_parsed = self._parse(file)
             parserd_docs.append(doc_parsed)
         return parserd_docs
 
     def _parse(self, file: Path) -> Document:
         file = Path(file)
-        md, doc_meta, company_name = self._parse_pdf_to_markdown(file)
+        md, base_meta = self._parse_pdf_to_markdown(file)
+        
+        doc_id = str(uuid.uuid4())
+
+        # 3) Enrich metadata using LLM (first ~1500 chars to save tokens)
+        enricher = MetadataEnricher()
+        enriched: DocMetadata = enricher.enrich(md[:1500])
+
+        
+
+        doc_meta = {
+            **base_meta,                  
+            "doc_id": doc_id,
+            "filename": file.name,
+            "company_name": enriched.company_name.lower(),
+            "document_date": enriched.document_date,
+            "document_type": enriched.document_type,
+        }
+
+        print(doc_meta)
+
         chunks = self._chunk(md, doc_meta)
+
         return Document(
-            id=str(uuid.uuid4()),
+            id=doc_id,
             text=md,
             num_chunks=len(chunks),
             chunks=chunks,
             metadata=doc_meta,
             file_name=file.name,
-            company_name=company_name
+            company_name=enriched.company_name,
         )
 
     def _parse_pdf_to_markdown(self, file: Path) -> Tuple[str, Dict[str, Any], str]:
@@ -63,16 +87,14 @@ class PDFProcessor:
 
         meta.setdefault("source", str(path))
 
-        company = extract_company_from_markdown(md)
-        if not company:
-            company = "unknown"
-
-        return md, meta, company
+        return md, meta
 
     def _chunk(self, md: str, doc_meta: Dict[str, Any]) -> List[Chunk]:
+
         header_docs = self._header_splitter.split_text(md)
 
         chunks: List[Chunk] = []
+
         chunk_id = 0
 
         for hd in header_docs:
@@ -93,13 +115,14 @@ class PDFProcessor:
                     continue
 
                 chunk_meta = dict(block_meta)
-                chunk_meta["chunk_id"] = chunk_id
+                unique_chunk_id = str(uuid.uuid4())
+                chunk_meta["chunk_id"] = unique_chunk_id
                 chunk_meta["chunk_index_in_block"] = i
                 chunk_meta["chunk_total_in_block"] = total
                 chunk_meta["section_path"] = " > ".join(
                     [str(chunk_meta.get(level_key)).strip() for _, level_key in self.header_levels if chunk_meta.get(level_key)]
                 )
-                chunks.append(Chunk(id=str(uuid.uuid4()), text=part, metadata=chunk_meta))
+                chunks.append(Chunk(id=unique_chunk_id, text=part, metadata=chunk_meta))
                 chunk_id += 1
 
         return chunks
