@@ -1,1 +1,0 @@
-HUMAN_PROMPT = """{content}"""

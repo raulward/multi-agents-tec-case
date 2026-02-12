@@ -4,8 +4,8 @@ from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage
 from app.core.config import settings
 
 from app.ai.structured_output.metadata import DocMetadata
-from app.ai.prompts.human_prompt import HUMAN_PROMPT
-from app.ai.prompts.system_prompt import SYSTEM_PROMPT
+from app.ai.prompts.metadata_enricher.system_prompt import SYSTEM_PROMPT
+from app.ai.prompts.metadata_enricher.human_prompt import HUMAN_PROMPT
 
 from typing import List
 

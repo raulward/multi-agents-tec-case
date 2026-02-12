@@ -39,8 +39,35 @@ class RAGProcessor:
         return self.collection.query(
             query_texts=[query_text],
             n_results=n_results,
-            where=where
+            where=self._build_where(where)
         )
+    
+    def _build_where(self, where: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+
+        if where is None:
+            return None
+
+        if not isinstance(where, dict):
+            raise TypeError(f"where must be dict or None, got {type(where)}")
+
+        if any(k.startswith("$") for k in where.keys()):
+            return where
+
+        cleaned: Dict[str, Any] = {}
+        for k, v in where.items():
+            if v is None:
+                continue
+            if isinstance(v, str) and v.strip().lower() in {"", "null", "none"}:
+                continue
+            cleaned[k] = v
+
+        if not cleaned:
+            return None
+
+        if len(cleaned) == 1:
+            return cleaned
+
+        return {"$and": [{k: v} for k, v in cleaned.items()]}
 
 if __name__ == "__main__":
     DB_PATH = "./chroma_db_test"
