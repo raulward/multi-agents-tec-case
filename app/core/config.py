@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     SEARCH_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     SEARCH_URLS: List[str]
+    MODEL_NAME: str = "gpt-4o-mini"
 
 
 settings = Settings()
