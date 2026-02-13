@@ -1,14 +1,12 @@
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Any, Literal, Dict
 
-import uuid
 
 class QueryRequest(BaseModel):
     query: str = Field(..., min_length=3, description="User question")
 
-
 class QueryResponse(BaseModel):
-    answer: Optional[str] = None
+    final_answer: Optional[str] = None
     confidence: float = 0.0
     citations: List[Dict[str, Any]] = []
     extracted_metrics: Optional[Dict[str, Any]] = None
@@ -25,15 +23,8 @@ class IngestResponse(BaseModel):
     documents_processed: int
     total_chunks: int
 
-
-class HealthResponse(BaseModel):
-    status: str
-    chunks_indexed: int
-    model: str
-
 class IngestionRequest(BaseModel):
     urls: Optional[List[str]]
-
 
 class Chunk(BaseModel):
     id: str
@@ -55,12 +46,10 @@ class Citation(BaseModel):
     source: Optional[str] = Field(default=None, description="Document/file name")
     quote: Optional[str] = Field(default=None, description="Short supporting excerpt")
 
-
 class RetrievalFilters(BaseModel):
     model_config = ConfigDict(extra="forbid")  
     company_name: Optional[str] = None
     doc_type: Optional[str] = None
-
 
 class RetrievalQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -87,8 +76,7 @@ class OrchestratorPlan(BaseModel):
     reasoning: str
     search_queries: List[RetrievalQuery] = Field(
         description="List of targeted searches", 
-        max_length=3, 
-        min_length=1
+        max_length=5
     )
     target_agents: List[Literal["extractor", "sentiment", "qa"]] = Field(
         min_length=1, 

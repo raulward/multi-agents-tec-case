@@ -85,6 +85,8 @@ You can combine agents (e.g., extractor + qa for comparison).
 3. Use minimal queries that achieve correctness
 4. If unsure → default to "qa" agent
 5. filter_company must be null or one of the exact values provided in the AVAILABLE METADATA section
+6. If you identify that question is a general question, DON'T provide search_queries
+7. If you pass 'extractor' or 'sentiment', ALWAYS pass QA to consolidate answer
 
 
 # EXAMPLES

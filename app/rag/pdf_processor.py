@@ -20,7 +20,7 @@ import uuid
 
 class PDFProcessor:
 
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
+    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200, metadata_enricher: MetadataEnricher | None = None):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.header_levels =  [("#", "h1"), ("##", "h2"), ("###", "h3"), ("####", "h4")]
@@ -30,6 +30,7 @@ class PDFProcessor:
             chunk_overlap=self.chunk_overlap,
             separators=["\n\n", "\n", " ", ""],
         )
+        self._enricher = metadata_enricher or MetadataEnricher()
 
     def parse_folder(self, folder: Path | str) -> List[Document]:
         parserd_docs = []
@@ -44,8 +45,8 @@ class PDFProcessor:
         
         doc_id = str(uuid.uuid4())
 
-        enricher = MetadataEnricher()
-        enriched: DocMetadata = enricher.enrich(md[:1500])
+
+        enriched: DocMetadata = self._enricher.enrich(md[:1500])
 
         doc_meta = {
             **base_meta,                  

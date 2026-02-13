@@ -9,6 +9,9 @@ from app.ai.workflows.state import AgentState
 from langchain_core.prompts import ChatPromptTemplate
 
 class QAAgent(BaseAgent):
+
+    produces = {"answer", "confidence", "citations", "reasoning"}
+
     def __init__(self, llm_client, name="qa"):
         super().__init__(llm_client, name)
         self.system_prompt = SYSTEM_PROMPT
@@ -46,24 +49,3 @@ class QAAgent(BaseAgent):
             "confidence": response.confidence
         }
 
-        
-
-    def _build_context(self, docs: List[dict]) -> str:
-        chunks = []
-
-        for i, doc in enumerate(docs[:5], 1):
-            metadata = doc.get("metadata") or {}
-            content = doc.get("content") or doc.get("text") or ""
-
-            filename = metadata.get("filename") or metadata.get("source") or "Unknown"
-            page = metadata.get("page", "?")
-            chunk_id = metadata.get("chunk_id") or doc.get("chunk_id") or "unknown"
-
-            chunks.append(
-                f"[Chunk {i}]\n"
-                f"chunk_id: {chunk_id}\n"
-                f"source: {filename}\n"
-                f"content:\n{content}\n"
-            )
-
-        return "\n---\n".join(chunks)

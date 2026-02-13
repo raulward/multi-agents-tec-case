@@ -12,6 +12,9 @@ from app.schemas.schemas import ExtractionResult
 from langchain_core.prompts import ChatPromptTemplate
 
 class ExtractorAgent(BaseAgent):
+
+    produces = {"extracted_metrics"}
+
     def __init__(self, llm_client, name="extractor"):
         super().__init__(llm_client, name)
         self.system_prompt = SYSTEM_PROMPT
@@ -50,42 +53,3 @@ class ExtractorAgent(BaseAgent):
         return {
             "extracted_metrics": extracts.model_dump(),
         }
-
-        
-
-    def _build_context(self, docs: List[dict]) -> str:
-
-        if not docs:
-            return ""
-
-        chunks = []
-
-        for i, doc in enumerate(docs[:5], 1):  
-            metadata = doc.get("metadata") or {}
-            content = (doc.get("content") or doc.get("text") or "").strip()
-
-            if not content:
-                continue
-
-            filename = metadata.get("filename") or metadata.get("source") or "Unknown"
-            section = metadata.get("section_path") or metadata.get("h2") or ""
-            document_date = metadata.get("document_date") or ""
-            document_type = metadata.get("document_type") or ""
-            chunk_id = metadata.get("chunk_id") or doc.get("chunk_id") or "unknown"
-            header_parts = [f"source={filename}"]
-            
-            if section:
-                header_parts.append(f"section={section}")
-            if document_date:
-                header_parts.append(f"date={document_date}")
-            if document_type:
-                header_parts.append(f"type={document_type}")
-            header = " | ".join(header_parts)
-            chunks.append(
-                f"[Chunk {i}]\n"
-                f"chunk_id: {chunk_id}\n"
-                f"{header}\n"
-                f"content:\n{content}\n"
-            )
-
-        return "\n---\n".join(chunks)

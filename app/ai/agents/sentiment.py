@@ -11,6 +11,9 @@ from app.schemas.schemas import RiskAssessment
 from langchain_core.prompts import ChatPromptTemplate
 
 class SentimentAgent(BaseAgent):
+
+    produces = {"sentiment_analysis"}
+
     def __init__(self, llm_client, name="sentiment"):
         super().__init__(llm_client, name)
         self.system_prompt = SYSTEM_PROMPT
@@ -34,7 +37,7 @@ class SentimentAgent(BaseAgent):
 
         context = self._build_context(docs)
 
-        human_prompt = HUMAN_PROMPT.replace("{query}", query).replace("{context}", context)
+        human_prompt = HUMAN_PROMPT
 
         prompt = ChatPromptTemplate.from_messages([
             ("system", self.system_prompt),
@@ -52,25 +55,3 @@ class SentimentAgent(BaseAgent):
         return {
             "sentiment_analysis": result.model_dump(),
         }
-
-        
-
-    def _build_context(self, docs: List[dict]) -> str:
-        chunks = []
-
-        for i, doc in enumerate(docs[:5], 1):
-            metadata = doc.get("metadata") or {}
-            content = doc.get("content") or doc.get("text") or ""
-
-            filename = metadata.get("filename") or metadata.get("source") or "Unknown"
-            page = metadata.get("page", "?")
-            chunk_id = metadata.get("chunk_id") or doc.get("chunk_id") or "unknown"
-
-            chunks.append(
-                f"[Chunk {i}]\n"
-                f"chunk_id: {chunk_id}\n"
-                f"source: {filename}\n"
-                f"content:\n{content}\n"
-            )
-
-        return "\n---\n".join(chunks)

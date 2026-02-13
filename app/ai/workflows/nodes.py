@@ -7,7 +7,6 @@ from app.ai.workflows.state import AgentState
 from app.ai.agents.orchestrator import OrchestratorAgent
 from app.rag.rag_processor import RAGProcessor
 
-from app.schemas.schemas import RetrievalQuery
 
 class WorkflowNodes:
 
@@ -29,6 +28,8 @@ class WorkflowNodes:
             state["selected_agents"] = plan.get("target_agents", [])
             state["routing_reasoning"] = plan.get("reasoning", "")
 
+            state["search_queries"] = plan.get("search_queries", []) or []
+
             if not state["selected_agents"]:
                 state["selected_agents"] = ["qa"]
 
@@ -38,27 +39,33 @@ class WorkflowNodes:
                 ok=True,
                 meta={
                     "selected_agents": state["selected_agents"],
-                    "n_search_queries": len(plan.get("search_queries", [])),
+                    "n_search_queries": len(state["search_queries"]),
                 },
-                plan=plan, 
+                plan=plan,
             )
             
             return state
+        
         except Exception as e:
-
             err = traceback.format_exc()
             self._push_trace(state, step="orchestrate", ok=False, meta={}, err=err)
             raise
+    
+    def route_after_orchestrate(self, state: AgentState) -> str:
+        search_queries = state.get("search_queries") or []
+        if len(search_queries) > 0:
+            return "retrieve"
+
+        if state.get("selected_agents"):
+            return "run_agents"
+
+        return "finalize"
 
     def retrieve(self, state: AgentState) -> AgentState:
 
             try:
 
-                last_plan = self._get_last_plan(state)
-                search_queries = last_plan.get("search_queries", []) if last_plan else []
-
-                if not search_queries:
-                    search_queries = [RetrievalQuery(query=state["query"])]
+                search_queries = state.get("search_queries") or []
 
                 all_docs: List[dict] = []
 
@@ -109,85 +116,130 @@ class WorkflowNodes:
                 raise
 
     def run_agents(self, state: AgentState) -> AgentState:
+        targets = state.get("selected_agents", []) or []
 
-        try:
-
-            targets = state.get("selected_agents", []) 
-            if not targets:
-                targets = ["qa"]
-
-            ALLOWED ={
-                "extractor": {"extracted_metrics"},
-                "sentiment": {"sentiment_analysis"},
-                "qa": {"answer", "confidence", "citations", "reasoning"}
-            }
-
-            for agent_name in targets:
-                agent = self.agent_registry.get(agent_name)
-                
-                if agent is None:
-
-                    self._push_trace(
-                            state,
-                            step=f"agent:{agent_name}",
-                            ok=False,
-                            meta={},
-                            err="agent_not_registered",
-                        )
-                    continue
-                
-                t0 = time.time()
-                out = agent.execute(state)
-                dt_ms = int((time.time() - t0) * 100)
-
-                for action, value in out.items():
-                    if action in ALLOWED.get(agent_name, set()):
-                        state[action] = value
-                    else:
-                        self._push_trace(
-                                state,
-                                step=f"agent:{agent_name}:dropped_key",
-                                ok=True,
-                                meta={"key": action},
-                        )
-
-            if state.get("answer"):
-                state["final_answer"] = state["answer"]
-            elif state.get("sentiment_analysis"):
-                state["final_answer"] = json.dumps(state["sentiment_analysis"], ensure_ascii=False)
-            elif state.get("extracted_metrics"):
-                state["final_answer"] = json.dumps(state["extracted_metrics"], ensure_ascii=False)
-
+        if not targets:
+            self._push_trace(
+                state,
+                step="run_agents",
+                ok=True,
+                meta={"note": "no_targets"},
+            )
             return state
-
         
-        except Exception as e:
-            err = traceback.format_exc()
-            self._push_trace(state, step="run_agents", ok=False, meta={}, err=err)
-            raise
- 
+        if "qa" not in targets:
+            targets.append("qa")
+
+        for agent_name in targets:
+            agent = self.agent_registry.get(agent_name)
+            if agent is None:
+                self._push_trace(
+                    state,
+                    step=f"agent:{agent_name}",
+                    ok=False,
+                    meta={"returned_keys": [], "applied_keys": [], "dropped_keys": []},
+                    err="agent_not_registered",
+                )
+                continue
+
+            allowed_keys = getattr(agent, "produces", None)
+            if not allowed_keys:
+                self._push_trace(
+                    state,
+                    step=f"agent:{agent_name}",
+                    ok=False,
+                    meta={"returned_keys": [], "applied_keys": [], "dropped_keys": []},
+                    err="agent_missing_produces",
+                )
+                continue
+
+            t0 = time.time()
+            out = None
+
+            try:
+                out = agent.execute(state)
+                if not isinstance(out, dict):
+                    raise TypeError(f"agent_output_not_dict: {type(out).__name__}")
+
+                returned_keys = list(out.keys())
+                applied_keys: List[str] = []
+                dropped_keys: List[str] = []
+
+                for k, v in out.items():
+                    if k in allowed_keys:
+                        state[k] = v
+                        applied_keys.append(k)
+                    else:
+                        dropped_keys.append(k)
+
+                dt_ms = int((time.time() - t0) * 1000)
+
+                self._push_trace(
+                    state,
+                    step=f"agent:{agent_name}",
+                    ok=True,
+                    meta={
+                        "dt_ms": dt_ms,
+                        "returned_keys": returned_keys,
+                        "applied_keys": applied_keys,
+                        "dropped_keys": dropped_keys,
+                    },
+                )
+
+            except Exception:
+                dt_ms = int((time.time() - t0) * 1000)
+                err = traceback.format_exc()
+
+                self._push_trace(
+                    state,
+                    step=f"agent:{agent_name}",
+                    ok=False,
+                    meta={
+                        "dt_ms": dt_ms,
+                        "returned_keys": list(out.keys()) if isinstance(out, dict) else [],
+                        "applied_keys": [],
+                        "dropped_keys": [],
+                    },
+                    err=err,
+                )
+                continue
+
+        return state
+
     def finalize(self, state: AgentState) -> AgentState:
-
         try:
-
-            if state.get("confidence")  is None:
+            
+            if state.get("confidence") is None:
                 state["confidence"] = 0.0
             if state.get("citations") is None:
                 state["citations"] = []
 
+            state["final_answer"] = self._compose_final_answer(state)
+        
             self._push_trace(
                 state,
                 step="finalize",
                 ok=True,
                 meta={"has_final_answer": bool(state.get("final_answer"))},
             )
-
             return state
 
-        except Exception as e:
+        except Exception:
             err = traceback.format_exc()
             self._push_trace(state, step="finalize", ok=False, meta={}, err=err)
             raise
+    
+    def _compose_final_answer(self, state: AgentState) -> str:
+
+        if state.get("answer"):
+            return state["answer"]
+        if state.get("extracted_metrics"):
+            return json.dumps(state["extracted_metrics"], ensure_ascii=False)
+        if state.get("sentiment_analysis"):
+            return json.dumps(state["sentiment_analysis"], ensure_ascii=False)
+
+        return "Baseado nos documentos fornecidos, não encontrei evidências suficientes para responder."
+
 
     def _push_trace(
         self,
@@ -211,13 +263,6 @@ class WorkflowNodes:
             event["plan"] = plan
         trace.append(event)
         state["agent_trace"] = trace
-
-    def _get_last_plan(self, state: AgentState) -> Dict[str, Any]:
-
-        for event in reversed(state.get("agent_trace", [])):
-            if event.get("step") == "orchestrate" and event.get("plan"):
-                return event["plan"]
-        return {}
 
     def _dedup_docs(self, docs: List[dict]) -> List[dict]:
 

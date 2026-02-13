@@ -5,6 +5,7 @@ class AgentState(TypedDict):
     query: str
     selected_agents: List[str]
     routing_reasoning: str
+    search_queries: List[dict]
     retrieved_docs: List[dict]
     company_catalog: List[str]
     extracted_metrics: Optional[dict]
