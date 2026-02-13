@@ -1,15 +1,39 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional, Any, Literal
+from typing import List, Optional, Any, Literal, Dict
 
 import uuid
+
+class QueryRequest(BaseModel):
+    query: str = Field(..., min_length=3, description="User question")
+
+
+class QueryResponse(BaseModel):
+    answer: Optional[str] = None
+    confidence: float = 0.0
+    citations: List[Dict[str, Any]] = []
+    extracted_metrics: Optional[Dict[str, Any]] = None
+    sentiment_analysis: Optional[Dict[str, Any]] = None
+    routing: Optional[Dict[str, Any]] = None
+    trace: List[Dict[str, Any]] = []
+
+class HealthResponse(BaseModel):
+    status: str
+    chunks_indexed: int
+    model: str
+
+class IngestResponse(BaseModel):
+    documents_processed: int
+    total_chunks: int
+
+
+class HealthResponse(BaseModel):
+    status: str
+    chunks_indexed: int
+    model: str
 
 class IngestionRequest(BaseModel):
     urls: Optional[List[str]]
 
-class IngestionResponse(BaseModel):
-    total_requested: int
-    total_downloaded: int
-    total_failed: int
 
 class Chunk(BaseModel):
     id: str
@@ -19,6 +43,7 @@ class Chunk(BaseModel):
 class Document(BaseModel):
     id: str
     company_name: str
+    filename: str
     num_chunks: int
     text: str
     chunks: List[Chunk]
@@ -44,9 +69,15 @@ class RetrievalQuery(BaseModel):
     
     filter_company: Optional[str] = Field(
         default=None, 
-        description="Filter by company name if explicitly mentioned (e.g. 'Apple', 'Tesla')"
+        description="Filter by company name if explicitly mentioned always lower (e.g. 'apple', 'tesla')"
     )
-    filter_doc_type: Optional[str] = Field(
+    filter_doc_type: Literal[
+        "Earnings Report",
+        "Board Meeting Minutes",
+        "Regulatory Filing",
+        "Transcript",
+        "Research Report",
+    ] = Field(
         default=None, 
         description="Filter by document type (e.g. '10-K', 'Earnings Report')"
     )
@@ -89,12 +120,10 @@ class RiskItem(BaseModel):
     severity: Literal["low", "medium", "high"] = Field(description="Estimated severity based only on context")
     citations: List[Citation] = Field(description="Supporting citations for this risk")
 
-
 class HighlightItem(BaseModel):
     title: str = Field(description="Short positive highlight title")
     description: str = Field(description="Brief explanation of the highlight")
     citations: List[Citation] = Field(description="Supporting citations")
-
 
 class RiskAssessment(BaseModel):
     sentiment: Literal["bullish", "bearish", "neutral"]

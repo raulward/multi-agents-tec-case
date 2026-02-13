@@ -44,11 +44,8 @@ class PDFProcessor:
         
         doc_id = str(uuid.uuid4())
 
-        # 3) Enrich metadata using LLM (first ~1500 chars to save tokens)
         enricher = MetadataEnricher()
         enriched: DocMetadata = enricher.enrich(md[:1500])
-
-        
 
         doc_meta = {
             **base_meta,                  
@@ -69,11 +66,11 @@ class PDFProcessor:
             num_chunks=len(chunks),
             chunks=chunks,
             metadata=doc_meta,
-            file_name=file.name,
+            filename=file.name,
             company_name=enriched.company_name,
         )
 
-    def _parse_pdf_to_markdown(self, file: Path) -> Tuple[str, Dict[str, Any], str]:
+    def _parse_pdf_to_markdown(self, file: Path) -> Tuple[str, Dict[str, Any]]:
         path = Path(file)
         loader = DoclingLoader(file_path=str(file), export_type=ExportType.MARKDOWN)
         docs = loader.load()

@@ -21,15 +21,19 @@ class OrchestratorAgent(BaseAgent):
 
         human_prompt = HUMAN_PROMPT
 
-
         prompt = ChatPromptTemplate.from_messages([
             ("system", self.system_prompt),
             ("human", human_prompt),
         ])
-        plan = (prompt | self.client_structured).invoke({"query": query})
+
+        catalog = state.get("company_catalog", [])
+        plan = (prompt | self.client_structured).invoke({"query": query, "catalog": catalog})
+
+        
+        search_queries = [q.model_dump() for q in plan.search_queries]
 
         return {
-            "search_queries": plan.search_queries,
+            "search_queries": search_queries,
             "target_agents": plan.target_agents,
             "reasoning": plan.reasoning
         }

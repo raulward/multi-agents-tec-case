@@ -20,12 +20,10 @@ class QAAgent(BaseAgent):
 
         if not docs:
             return {
-                "extracted_metrics": QAAnswer(
-                        answer="Documents not found to provide an answer",
-                        reasoning="Documents not found to provide an reasoning",
-                        citations=[],
-                        confidence=0.0
-                ).model_dump(),
+                "answer": "Documents not found to provide an answer.",
+                "reasoning": "No documents were provided for analysis.",
+                "citations": [],
+                "confidence": 0.0,
             }
 
         context = self._build_context(docs)

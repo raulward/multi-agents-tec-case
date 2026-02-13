@@ -5,7 +5,7 @@ from app.schemas.schemas import Chunk
 
 from chromadb.utils import embedding_functions
 
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Set
 
 from app.core.config import settings
 
@@ -68,6 +68,22 @@ class RAGProcessor:
             return cleaned
 
         return {"$and": [{k: v} for k, v in cleaned.items()]}
+    
+    def list_distinct_company_names(self, limit: int = 5000) -> list[str]:
+        # Chroma não tem DISTINCT; então pegamos metadatas e fazemos set()
+        data = self.collection.get(
+            include=["metadatas"],
+            limit=limit,
+        )
+        metas = data.get("metadatas") or []
+        companies: Set[str] = set()
+        for md in metas:
+            if not md:
+                continue
+            c = md.get("company_name")
+            if isinstance(c, str) and c.strip():
+                companies.add(c.strip().lower())
+        return sorted(companies)
 
 if __name__ == "__main__":
     DB_PATH = "./chroma_db_test"
