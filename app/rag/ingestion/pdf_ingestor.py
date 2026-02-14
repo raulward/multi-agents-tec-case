@@ -1,40 +1,57 @@
-"""Legacy module: unused by the deterministic /ingest pipeline."""
-
-import tempfile
-from pathlib import Path
-
-import requests
-
 from app.rag.chunker import Chunker
-from app.rag.pdf_processor import PDFProcessor
+from app.rag.ingestion.models import FetchOverrides, SourceItem
+from app.rag.ingestion.parsers import ParsedMarkdown
 from app.schemas.domain import Document
 
-from .types import IngestorOptions
+from .types import FetcherProtocol, IngestorOptions, MarkdownEnricherProtocol, PdfParserProtocol
 
 
 class PdfIngestor:
+    """Ingestor de fontes PDF com parser e enricher injetados."""
+
+    def __init__(
+        self,
+        parser: PdfParserProtocol,
+        enricher: MarkdownEnricherProtocol,
+        fetcher: FetcherProtocol | None = None,
+    ) -> None:
+        self._parser = parser
+        self._enricher = enricher
+        self._fetcher = fetcher
+
+    def parse(self, source: SourceItem, payload: bytes) -> ParsedMarkdown:
+        return self._parser.parse(payload, source.id)
+
+    def enrich(self, markdown: str):
+        return self._enricher.enrich(markdown)
+
     def ingest(self, source: str, options: IngestorOptions) -> Document:
-        response = requests.get(source)
-        response.raise_for_status()
+        if self._fetcher is None:
+            raise RuntimeError("PdfIngestor ingest() requires fetcher dependency")
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-            tmp.write(response.content)
-            tmp_path = Path(tmp.name)
+        fetched = self._fetcher.fetch(source, FetchOverrides())
+        parsed = self._parser.parse(fetched.content, source_id="pdf_doc_legacy")
+        enriched = self._enricher.enrich(parsed.markdown)
 
-        processor = PDFProcessor()
-        parsed = processor.extract(tmp_path)
-
-        chunker = Chunker(
-            chunk_size=options.chunk_size,
-            chunk_overlap=options.chunk_overlap,
+        metadata = dict(parsed.base_metadata)
+        metadata.update(
+            {
+                "source_url": source,
+                "resolved_url": fetched.resolved_url,
+                "company_name": enriched.company_name.strip().lower(),
+                "document_type": enriched.document_type,
+                "document_date": enriched.document_date,
+            }
         )
-        chunks = chunker.chunk(parsed["text"], parsed["metadata"])
+
+        chunker = Chunker(chunk_size=options.chunk_size, chunk_overlap=options.chunk_overlap)
+        chunks = chunker.chunk(parsed.markdown, metadata)
 
         return Document(
-            id=parsed["id"],
-            company_name=parsed["company_name"],
+            id=metadata.get("source_id", "pdf_doc_legacy"),
+            company_name=metadata.get("company_name", "unknown"),
             num_chunks=len(chunks),
-            text=parsed["text"],
+            text=parsed.markdown,
             chunks=chunks,
-            metadata=parsed["metadata"],
+            metadata=metadata,
         )

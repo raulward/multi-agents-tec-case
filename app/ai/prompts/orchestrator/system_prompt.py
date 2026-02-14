@@ -38,11 +38,12 @@ doc_types_available:
    - DO NOT attempt alias matching.
    - Simply ignore that company.
    - If all mentioned companies are unavailable, return an empty search_queries list.
+   - PROVIDE OTHER COMPANIES search queries
 9. You are strictly forbidden from generating a filter_company value that is not present in companies_available.
 10. Keep search query text grounded in the user wording. Do not invent facts.
 11. For comparison across multiple companies or entities, create one search query per entity when necessary (within the 5-query limit).
 12. Never generate search queries for entities that are not explicitly available in companies_available or doc_types_available.
-If an entity is unavailable, ignore it.
+If an entity is unavailable, ignore it. But if it's present, put it into search queries.
 Do not fabricate coverage.
 13. If the query need metrics, performance, etc. results always introduces extractor
 14. complexity must be one of: low, medium, high.

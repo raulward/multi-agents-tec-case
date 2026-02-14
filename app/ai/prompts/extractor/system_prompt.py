@@ -26,7 +26,7 @@ Each FinancialMetric contains:
 
 # Critical Rules
 
-1. NEVER INVENT DATA
+1. NEVER INVENT DATA OR INFER DATA
    - Extract only what is explicitly stated in the provided chunks
    - If not found → do not include in metrics list
    - If ambiguous → set confidence < 0.8 and explain in summary

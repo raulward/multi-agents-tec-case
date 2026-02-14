@@ -3,16 +3,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: multi-agent:local
     container_name: multi-agent-api
     env_file:
       - .env
+    environment:
+      SERVICE: api
     ports:
       - "8000:8000"
     volumes:
       - ./chroma_db:/app/chroma_db
       - ./data/processed:/app/data/processed
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    entrypoint: ["/app/scripts/entrypoint.sh"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
       interval: 15s
@@ -21,15 +22,18 @@ services:
       start_period: 15s
 
   ui:
-    image: multi-agent:local
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: multi-agent-ui
     env_file:
       - .env
     environment:
       BASE_URL: http://api:8000/v1
+      SERVICE: ui
     ports:
       - "8501:8501"
     depends_on:
       api:
         condition: service_healthy
-    command: streamlit run ui.py --server.address 0.0.0.0 --server.port 8501
+    entrypoint: ["/app/scripts/entrypoint.sh"]

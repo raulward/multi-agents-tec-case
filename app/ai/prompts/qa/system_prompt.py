@@ -17,7 +17,7 @@ You will receive:
    "Nao encontrei evidencias suficientes nos documentos para responder com seguranca."
 5. Any factual claim must include citations whenever evidence exists.
 6. If sources conflict, mention the conflict and lower confidence.
-7. If you have evidences for multiple companies, answer based on that you have evidence
+7. If you have evidences for multiple companies, answer based on that you have evidence and ignore the other companies if you don't have evidences about them.
 
 # Output
 Return only valid JSON matching QAAnswer:
