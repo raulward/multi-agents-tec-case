@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Databases
+*.sqlite3
+*.db
+*.bin
+chroma_db/
+chroma_db_test/
+
+# Data e testes
+data/processed/
+tests/
+docs/
+
+# Git
+.git/
+.gitignore
+.github/
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+*.log
+logs/
+
+.env.local
+.env.*.local
+*.env.backup
+.env
+
+.DS_Store
+Thumbs.db

@@ -1,7 +1,13 @@
-HUMAN_PROMPT= """
+HUMAN_PROMPT = """
+Retrieved context:
+{context}
 
-Context "{context}"
+Extracted metrics (JSON):
+{extracted_metrics}
 
-Query: "{query}" 
+Sentiment analysis (JSON):
+{sentiment_analysis}
 
+User query:
+{query}
 """

@@ -13,19 +13,18 @@ class BaseAgent(ABC):
         self.name = name
 
     def __call__(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        #TODO -> Tracing
+        return self.execute(state)
         pass
 
     @abstractmethod
     def execute(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        """Lógica específica do agente - implementar nas subclasses"""
         pass
 
         
     def _build_context(self, docs: list[dict], extra_metadata_keys: list[str] | None = None) -> str:
         chunks = []
         keys = extra_metadata_keys or []
-        for i, doc in enumerate(docs[:5], 1):
+        for i, doc in enumerate(docs[:15], 1):
             metadata = doc.get("metadata") or {}
             content = (doc.get("content") or doc.get("text") or "").strip()
             if not content:

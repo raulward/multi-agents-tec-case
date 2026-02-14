@@ -1,20 +1,22 @@
 # app/main.py
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from app.api.v1 import health, query, ingest
+from app.api.v1 import health, ingest, query
+from app.core.logging_config import setup_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
+from app.ai.workflows.workflow import build_workflows
+from app.ai.workflows.workflow_dependencies import WorkflowDependencies
+
+setup_logging()
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.ai.workflows.workflow_dependencies import WorkflowDependencies
-    from app.ai.workflows.workflow import build_workflows
+    
 
     logger.info("Initializing workflow dependencies...")
     deps = WorkflowDependencies.get_instance()
@@ -23,9 +25,10 @@ async def lifespan(app: FastAPI):
     app.state.deps = deps
     app.state.workflow_app = workflow_app
 
-    logger.info("Workflow ready. Collection has %d chunks.", deps.rag.collection.count())
+    logger.info("Workflow ready. Collection has %d chunks.", deps.rag.count_chunks())
     yield
     logger.info("Shutting down.")
+
 
 app = FastAPI(
     title="Multi-Agent API",
@@ -33,6 +36,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(health.health_router, prefix="/v1/query", tags=["health"])
-app.include_router(query.query_router, prefix="/v1/health", tags=["query"])
-app.include_router(ingest.ingest_router, prefix="/v1/ingest", tags=["ingest"])
+app.include_router(health.health_router, prefix="/v1", tags=["health"])
+app.include_router(query.query_router, prefix="/v1", tags=["query"])
+app.include_router(ingest.ingest_router, prefix="/v1", tags=["ingest"])

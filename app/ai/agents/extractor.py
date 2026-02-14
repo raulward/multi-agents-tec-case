@@ -1,5 +1,10 @@
+"""Agente especialista em extracao de metricas estruturadas.
+
+Converte contexto recuperado em um sumario de indicadores financeiros e
+operacionais, retornando um payload estruturado para o workflow.
+"""
+
 from app.ai.agents.base import BaseAgent
-from app.schemas.schemas import FinancialMetrics
 from typing import Dict, Any, List
 import json
 
@@ -8,19 +13,46 @@ from app.ai.prompts.extractor.human_prompt import HUMAN_PROMPT
 
 from app.ai.workflows.state import AgentState
 
-from app.schemas.schemas import ExtractionResult
+from app.ai.structured_output.extractor import ExtractionResult
 from langchain_core.prompts import ChatPromptTemplate
 
 class ExtractorAgent(BaseAgent):
+    """Executa extracao de metricas com saida tipada.
+
+    Este agente usa prompt especifico de extracao e devolve apenas a chave
+    `extracted_metrics` conforme o contrato de producao.
+    """
 
     produces = {"extracted_metrics"}
 
     def __init__(self, llm_client, name="extractor"):
+        """Resumo:
+            Inicializa o agente de extracao e seu cliente estruturado.
+
+        Args:
+            llm_client (Any): Cliente LLM base usado para inferencia.
+            name (str): Nome identificador do agente.
+
+        Returns:
+            None: Nao retorna valor.
+        """
         super().__init__(llm_client, name)
         self.system_prompt = SYSTEM_PROMPT
         self.client_structured = self.client.with_structured_output(ExtractionResult)
 
     def execute(self, state: AgentState) -> Dict[str, Any]:
+        """Resumo:
+            Extrai metricas do contexto recuperado e retorna payload estruturado.
+
+            Chaves de `state` lidas: `query`, `retrieved_docs`.
+            Chaves de `state` escritas: Nenhuma (retorna payload de saida).
+
+        Args:
+            state (AgentState): Estado atual do workflow.
+
+        Returns:
+            Dict[str, Any]: Dicionario com a chave `extracted_metrics`.
+        """
         query = state["query"]
         docs = state.get("retrieved_docs", [])
 

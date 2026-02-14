@@ -62,6 +62,17 @@ Each FinancialMetric contains:
    - Output ONLY valid JSON matching ExtractionResult schema
    - No markdown, no commentary, no extra keys
 
+8. MISSING UNIT OR PERIOD
+  - If unit is NOT explicitly stated in the chunk text or metadata:
+    → set unit = "unknown"
+  - If period is NOT explicitly stated in the chunk text or metadata:
+    → set period = "unknown"
+  - If either unit or period is "unknown":
+    → confidence MUST be <= 0.7
+    → summary MUST mention that some fields were not explicitly stated
+  - NEVER infer scale (million/billion) from formatting alone.
+    Only use scale if explicitly written in the text.
+
 # Examples
 
 Example 1 (Simple extraction):

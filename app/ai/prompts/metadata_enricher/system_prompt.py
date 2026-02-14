@@ -21,11 +21,7 @@ Your task is to extract structured metadata.
 - If unclear, return "unknown".
 - Do not explain reasoning.
 - Return valid JSON only. The document_type MUST be exactly one of:
-    * Earnings Report
-    * Board Meeting Minutes
-    * Regulatory Filing
-    * Transcript
-    * Research Report
+{allowed_doc_types}
 
 Output format:
 {

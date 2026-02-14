@@ -1,11 +1,13 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, get_args
 from langchain_openai import ChatOpenAI
 
 from app.ai.agents.orchestrator import OrchestratorAgent
 from app.ai.agents.extractor import ExtractorAgent
 from app.ai.agents.qa import QAAgent
 from app.ai.agents.sentiment import SentimentAgent
+from app.schemas.domain import DocumentType
 from app.rag.rag_processor import RAGProcessor
+from app.rag.rag_service import RagService
 from app.core.config import settings
 
 
@@ -19,12 +21,20 @@ class WorkflowDependencies:
             temperature=0,
             api_key=settings.OPENAI_API_KEY,
         )
-        self.rag = RAGProcessor(
+        rag_processor = RAGProcessor(
             persist_directory=settings.CHROMA_PERSIST_DIR,
             collection_name=settings.CHROMA_COLLECTION
         )
+        self.rag = RagService(rag_processor)
+        self.doc_types = list(get_args(DocumentType))
+        self.company_catalog = self.rag.list_distinct_company_names()
 
-        self.orchestrator = OrchestratorAgent(llm_client=self.client, name="orchestrator")
+        self.orchestrator = OrchestratorAgent(
+            llm_client=self.client,
+            name="orchestrator",
+            company_catalog=self.company_catalog,
+            doc_types=self.doc_types,
+        )
         self.extractor = ExtractorAgent(llm_client=self.client, name="extractor")
         self.sentiment = SentimentAgent(llm_client=self.client, name="sentiment")
         self.qa = QAAgent(llm_client=self.client, name="qa")
@@ -34,8 +44,6 @@ class WorkflowDependencies:
             "sentiment": self.sentiment,
             "qa": self.qa,
         }
-
-        self.company_catalog = self.rag.list_distinct_company_names()
 
     @classmethod
     def get_instance(cls, client: Optional[ChatOpenAI] = None) -> 'WorkflowDependencies':

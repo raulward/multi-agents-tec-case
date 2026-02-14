@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.services.query_service import QueryService
-from app.schemas.schemas import QueryResponse, QueryRequest
 from app.core.deps import get_deps, get_workflow
+from app.schemas.api import QueryRequest, QueryResponse
+from app.services.query_service import QueryService
 
 query_router = APIRouter()
+
 
 @query_router.post("/query", response_model=QueryResponse)
 def query(

@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: multi-agent:local
+    container_name: multi-agent-api
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ./data/processed:/app/data/processed
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ui:
+    image: multi-agent:local
+    container_name: multi-agent-ui
+    env_file:
+      - .env
+    environment:
+      BASE_URL: http://api:8000/v1
+    ports:
+      - "8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    command: streamlit run ui.py --server.address 0.0.0.0 --server.port 8501
