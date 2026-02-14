@@ -1,4 +1,4 @@
-# Multi-Agent Financial QA
+# Multi-Agent System
 
 API de perguntas e respostas financeiras com arquitetura multiagente + RAG.
 
@@ -35,7 +35,7 @@ OPENAI_API_KEY=your_openai_key_here
 
 Variáveis opcionais (com defaults em `app/core/config.py`):
 - `CHROMA_PERSIST_DIR` (default: `./chroma_db`)
-- `CHROMA_COLLECTION` (default: `financial_docs`)
+- `CHROMA_COLLECTION` (default: `docs`)
 - `DATA_DIR` (default: `./data/processed`)
 - `MODEL_NAME` (default: `gpt-4o-mini`)
 
@@ -128,7 +128,3 @@ Exemplo de resposta (shape):
 4. Agentes executam (dinâmico) e `qa` consolida resposta.
 5. `finalize` monta saída e `trace`.
 
-## Troubleshooting rápido
-- Build Docker demorado no primeiro run: normal (download de dependências).
-- Erro de conexão Docker no Windows (`dockerDesktopLinuxEngine`): abra o Docker Desktop e valide `docker info`.
-- API 500 em query/ingest: valide `OPENAI_API_KEY` no `.env`.

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     SEARCH_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
     CHROMA_PERSIST_DIR: str = "./chroma_db"
-    CHROMA_COLLECTION: str = "financial_docs"
+    CHROMA_COLLECTION: str = "docs"
     DATA_DIR: str = "./data/processed"
     MODEL_NAME: str = "gpt-4o-mini"
 
